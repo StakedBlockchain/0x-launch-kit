@@ -56,5 +56,5 @@ import { utils } from './utils';
 
     app.use(errorHandler);
 
-    app.listen(HTTP_PORT, () => utils.log(`Standard relayer API (HTTP) listening on port ${HTTP_PORT}!`));
+    app.listen((process.env.PORT || HTTP_PORT), () => utils.log(`Standard relayer API (HTTP) listening on port ${process.env.PORT || HTTP_PORT}!`));
 })().catch(utils.log);

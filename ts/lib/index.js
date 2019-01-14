@@ -18,16 +18,6 @@ const utils_1 = require("./utils");
     app.use(cors());
     app.use(bodyParser.json());
     app.use(url_params_parsing_1.urlParamsParsing);
-    /*
-    app.use((_, res, next) => {
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-        next();
-    });
-    */
-    app.use(bodyParser.urlencoded({
-        extended: true,
-    }));
     /**
      * GET AssetPairs endpoint retrieves a list of available asset pairs and the information required to trade them.
      * http://sra-spec.s3-website-us-east-1.amazonaws.com/#operation/getAssetPairs
@@ -64,5 +54,5 @@ const utils_1 = require("./utils");
      */
     app.get('/v2/order/:orderHash', asyncHandler(handlers_1.handlers.getOrderByHashAsync));
     app.use(error_handling_1.errorHandler);
-    app.listen(config_1.HTTP_PORT, () => utils_1.utils.log(`Standard relayer API (HTTP) listening on port ${config_1.HTTP_PORT}!`));
+    app.listen((process.env.PORT || config_1.HTTP_PORT), () => utils_1.utils.log(`Standard relayer API (HTTP) listening on port ${process.env.PORT || config_1.HTTP_PORT}!`));
 })().catch(utils_1.utils.log);
