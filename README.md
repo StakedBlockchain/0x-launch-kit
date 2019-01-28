@@ -34,6 +34,8 @@ Before you start using `0x-launch-kit`, choose whether you want your codebase to
 -   delete the `ts` directory
 -   delete all scripts from `package.json` that end with `:ts`
 
+Note: If you also wish to build and use the Docker image, please update the command in the Dockerfile to `CMD [ "forever", "js/index.js" ]`
+
 **If you want to work in Typescript:**
 
 -   delete the `js` directory
@@ -57,6 +59,7 @@ To develop ontop of `0x-launch-kit`, follow the following instructions:
 -   `FEE_RECIPIENT` -- The Ethereum address which should be specified as the fee recipient in orders your relayer accepts.
 -   `MAKER_FEE_ZRX_UNIT_AMOUNT` -- The flat maker fee you'd like to receive for filled orders hosted by you.
 -   `TAKER_FEE_ZRX_UNIT_AMOUNT` -- The flat taker fee you'd like to receive for filled orders hosted by you.
+-   `RPC_URL` -- Update with your node url.  NOTE: Kovan doesn't work on INFURA with the current version of the OrderWatcher
 
 4. Make sure you have [Yarn](https://yarnpkg.com/en/) installed.
 5. Install the dependencies

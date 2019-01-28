@@ -1,6 +1,5 @@
-import { BigNumber, orderHashUtils, RPCSubprovider, SignedOrder, Web3ProviderEngine } from '0x.js';
+import { assetDataUtils, BigNumber, orderHashUtils, RPCSubprovider, SignedOrder, Web3ProviderEngine } from '0x.js';
 import { APIOrder, OrderbookResponse, PaginatedCollection } from '@0x/connect';
-import { assetDataUtils } from '@0x/order-utils';
 import { OrderState, OrderWatcher } from '@0x/order-watcher';
 import { Asset, AssetPairsItem, AssetProxyId, OrdersRequestOpts } from '@0x/types';
 import { errorUtils, intervalUtils } from '@0x/utils';
@@ -25,7 +24,7 @@ const shadowedOrders: Map<string, number> = new Map();
 
 export const orderBook = {
     onOrderStateChangeCallback: (err: Error | null, orderState?: OrderState) => {
-        if (!_.isUndefined(err)) {
+        if (!_.isNull(err)) {
             utils.log(err);
         } else {
             const state = orderState as OrderState;
@@ -42,6 +41,8 @@ export const orderBook = {
             const now = Date.now();
             if (shadowedAt + ORDER_SHADOWING_MARGIN_MS < now) {
                 permanentlyExpiredOrders.push(orderHash);
+                shadowedOrders.delete(orderHash); // we need to remove this order so we don't keep shadowing it
+                orderWatcher.removeOrder(orderHash); // also remove from order watcher to avoid more callbacks
             }
         }
         if (!_.isEmpty(permanentlyExpiredOrders)) {
@@ -187,15 +188,13 @@ export const orderBook = {
                 // makerAssetAddress
                 signedOrder =>
                     _.isUndefined(ordersFilterParams.makerAssetAddress) ||
-                    assetDataUtils.decodeAssetDataOrThrow(signedOrder.makerAssetData).tokenAddress ===
-                        ordersFilterParams.makerAssetAddress,
+                    includesTokenAddress(signedOrder.makerAssetData, ordersFilterParams.makerAssetAddress),
             )
             .filter(
                 // takerAssetAddress
                 signedOrder =>
                     _.isUndefined(ordersFilterParams.takerAssetAddress) ||
-                    assetDataUtils.decodeAssetDataOrThrow(signedOrder.takerAssetData).tokenAddress ===
-                        ordersFilterParams.takerAssetAddress,
+                    includesTokenAddress(signedOrder.takerAssetData, ordersFilterParams.takerAssetAddress),
             )
             .filter(
                 // makerAssetProxyId
@@ -215,15 +214,30 @@ export const orderBook = {
         const paginatedApiOrders = paginate(apiOrders, page, perPage);
         return paginatedApiOrders;
     },
-    getOrderByHashIfExistsAsync: async (orderHash: string): Promise<SignedOrder | undefined> => {
+    getOrderByHashIfExistsAsync: async (orderHash: string): Promise<APIOrder | undefined> => {
         const connection = getDBConnection();
         const signedOrderModelIfExists = await connection.manager.findOne(SignedOrderModel, orderHash);
         if (_.isUndefined(signedOrderModelIfExists)) {
             return undefined;
         } else {
-            return deserializeOrder(signedOrderModelIfExists as Required<SignedOrderModel>);
+            const deserializedOrder = deserializeOrder(signedOrderModelIfExists as Required<SignedOrderModel>);
+            return { metaData: {}, order: deserializedOrder };
         }
     },
+};
+
+const includesTokenAddress = (assetData: string, tokenAddress: string): boolean => {
+    const decodedAssetData = assetDataUtils.decodeAssetDataOrThrow(assetData);
+    if (assetDataUtils.isMultiAssetData(decodedAssetData)) {
+        for (const [, nestedAssetDataElement] of decodedAssetData.nestedAssetData.entries()) {
+            if (includesTokenAddress(nestedAssetDataElement, tokenAddress)) {
+                return true;
+            }
+        }
+        return false;
+    } else {
+        return decodedAssetData.tokenAddress === tokenAddress;
+    }
 };
 
 const deserializeOrder = (signedOrderModel: Required<SignedOrderModel>): SignedOrder => {
